@@ -8,416 +8,123 @@
   <link rel="shortcut icon" href="favicon.png"> 
   <link rel="apple-touch-icon-precomposed" href="favicon.png">
   <link rel="stylesheet" href="assets/css/vue-eleui.css">
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
   <link rel="stylesheet" href="codemirror/codemirror.css">
   <link rel="stylesheet" href="codemirror/theme/base16-light.css">
   <link rel="stylesheet" href="codemirror/theme/duotone-light.css">
   <link rel="stylesheet" href="codemirror/theme/monokai.css">
-  <script src="assets/scripts/marked.min.js"></script>
-  <script src="assets/scripts/vue.js"></script>
-  <script src="assets/scripts/vue-eleui.js"></script>
-  <script src="codemirror/codemirror.js"></script>
-  <script src="codemirror/mode/markdown/markdown.js"></script>
-  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-4178606-10"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'UA-4178606-10');
-  </script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    a { text-decoration: none; color: #ff3502 }
-    input, button, textarea { font-family: inherit; }
-    h1, h2, h3, h4, h5, h6 { font-weight: normal; }
-    em { font-style: normal !important; }
-    html, body {
-      height: 100%;
-      font-family: 'PingFangSC-light', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
-    }
-    .el-message__icon { display: none }
-    .container {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-    .top {
-      height: 60px;
-    }
-    #editor {
-      height: 100%;
-      display: block;
-      border: none;
-      width: 100%;
-      padding: 10px;
-    }
-    section {
-      height: 100%;
-    }
-    .main-body {
-    }
-    .main-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .hint {
-      opacity: 0.6;
-      margin: 20px 0;
-    }
-    .preview {
-      margin: 0 -20px;
-      width: 375px;
-      padding: 20px;
-      font-size: 16px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      outline: 1px solid #ddd;
-    }
-    .preview ul, .preview ol {
-      padding-left: 20px !important;
-    }
-    .CodeMirror {
-      height: 100%;
-      border-radius: 4px;
-      font-size: 16px;
-      padding: 20px;
-      width: 100%;
-    }
-  </style>
+  <link rel="stylesheet" href="assets/css/app.css">
 </head>
 <body>
   <div id="app" class="container">
     <el-container>
-      <el-header>
-        <el-menu default-active="0" mode="horizontal" @select="handleSelect">
-          <el-menu-item index="0">编辑器</el-menu-item>
-          <el-menu-item index="1">输出</el-menu-item>
-          <el-menu-item index="2">联系我</el-menu-item>
-        </el-menu>
+      <el-header class="top">
+        <div class="logo">{{ title }}</div>
+        <el-form size="mini" class="ctrl" :inline=true>
+          <el-form-item label="Editor Themes">
+            <el-select v-model="currentEditorTheme" size="mini" placeholder="选择字体" @change="editorThemeChanged">
+              <el-option v-for="editorTheme in editorThemes" :key="editorTheme.value" :label="editorTheme.label"
+                :value="editorTheme.value">
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="Fonts">
+            <el-select v-model="currentFont" size="mini" placeholder="选择字体" @change="fontChanged">
+              <el-option v-for="font in builtinFonts"  :style="{fontFamily: font.value}"
+                :key="font.value"
+                :label="font.label"
+                :value="font.value">
+                <span style="float: left">{{ font.label }}</span>
+                <span style="float: right; color: #8492a6; font-size: 13px" >Abc</span>
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="Font Size">
+            <el-select v-model="currentSize" size="mini" placeholder="选择段落字体大小" @change="sizeChanged">
+              <el-option v-for="size in sizeOption"
+                :key="size.value"
+                :label="size.label"
+                :value="size.value">
+                <span style="float: left">{{ size.label }}</span>
+                <span style="float: right; color: #8492a6; font-size: 13px" >{{ size.desc }}</span>
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="Themes">
+            <el-select v-model="currentTheme" size="mini" placeholder="选择主题样式" @change="themeChanged">
+              <el-option v-for="theme in themeOption" :key="theme.value" :label="theme.label" :value="theme.value">
+                <span style="float: left">{{ theme.label }}</span>
+                <span style="float: right; color: #8492a6; font-size: 13px">{{ theme.author }}</span>
+              </el-option>
+            </el-select>
+          </el-form-item>
+        </el-form>
+        <el-button class="about" @click="aboutDialogVisible = true">关于</el-button>
       </el-header>
       <el-main class="main-body">
-        <section v-show="paneStats[0]" class="main-section">
-          <textarea
-            id="editor"
-            type="textarea"
-            placeholder="Your markdown here."
-            v-model="source">
-          </textarea>
-        </section>
-        <section v-show="paneStats[1]" class="main-section">
-          <div class="hint">全选复制或<a href="#" @click="copy" class="copy-button">点此复制</a>，然后在公众号编辑器粘贴</div>
-          <div class="preview" contenteditable="true">
-            <div id="output" v-html="output">
-            </div>
-          </div>
-        </section>
-        <section v-show="paneStats[2]" class="main-section">
-          <div v-html="aboutOutput">
-          </div>
-        </section>
+        <el-row :gutter="10" class="main-section">
+          <el-col :span="12">
+            <textarea
+              id="editor"
+              type="textarea"
+              placeholder="Your markdown here."
+              v-model="source">
+            </textarea>
+          </el-col>
+          <el-col :span="12" class="preview-wrapper">
+            <section>
+              <div class="hint">全选复制或<a href="#" @click="copy" class="copy-button">点此复制</a>，然后在公众号编辑器粘贴</div>
+              <div class="preview" contenteditable="true">
+                <div id="output" v-html="output">
+                </div>
+              </div>
+            </section>
+          </el-col>
+        </el-row>
       </el-main>
     </el-container>
+
+    <el-dialog title="关于" :visible.sync="aboutDialogVisible" width="30%" center>
+      <div>
+        <h3>WeChat Format 有什么用？</h3>
+        <p>能较好地排版；</p>
+        <p>能解决 <code>ul</code> 和 <code>ol</code> 渲染时样式被微信编辑器重置的问题；</p>
+        <p>能把外部链接自动转为参考文献索引，并且附在文章末尾</p>
+        <p>&nbsp;</p>
+        <h3>关于我</h3>
+        <p>我是 Lyric。如果你喜欢我的工具，可以：</p>
+        <p>关注我的公众号 "<code>iamlyricw</code>"，<a href='https://lyric.im' target='_blank' class='url'>博客</a> 或 <a href='https://github.com/lyricat/wechat-format' target='_blank' class='url'>Github</a></p>
+        <p>
+          微信打赏我：
+          <img src="./assets/images/wechat_qrcode.jpg" style="width: 60%; display: block; margin: 0 auto;"/>
+        </p>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="aboutDialogVisible = false">打赏了！</el-button>
+      </span>
+    </el-dialog>
   </div>
+
+  <script src="assets/scripts/axios.min.js"></script>
+  <script src="assets/scripts/marked.min.js"></script>
+  <script src="assets/scripts/vue.js"></script>
+  <script src="assets/scripts/vue-eleui.js"></script>
+  <script src="assets/scripts/FuriganaMD.js"></script>
+  
+  <script src="codemirror/codemirror.js"></script>
+  <script src="codemirror/mode/markdown/markdown.js"></script>
+
+  <script src="assets/scripts/themes/default.js"></script>
+  <script src="assets/scripts/themes/lupeng.js"></script>
+  <script src="assets/scripts/renderers/wx-renderer.js"></script>
+  <script src="assets/scripts/editor.js"></script>
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-4178606-10"></script>
   <script>
-    var ENV_USE_REFERENCES = true
-    var ENV_STETCH_IMAGE = true
-    var COPY = function (base, extend) { return Object.assign({}, base, extend)}
-
-    var FONT_FAMILY = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif"
-    var FONT_FAMILY_MONO = "Operator Mono, Consolas, Monaco, Menlo, monospace"
-    var FONT_FAMILY_SERIF = "Optima-Regular, PingFangSC-light, PingFangTC-light, PingFang, Cambria, Cochin, Georgia, Times, 'Times New Roman', serif"
-    var BASE_STYLE = {
-      'font-family': FONT_FAMILY_SERIF, 'text-align': 'left',
-      'color': '#3f3f3f',
-      'line-height': '1.5',
-      'font-size': '16px',
-    }
-    var BASE_BLOCK_STYLE = COPY(BASE_STYLE, {
-      'margin': '20px 10px'
-    })
-    var GRADIENT_STYLE = COPY(BASE_STYLE, {
-      'background-image': '-webkit-linear-gradient(left,#ff3502,#E67300)',
-      'background-image': 'linear-gradient(to right,#ff3502,#E67300)',
-      '-webkit-background-clip': 'text',
-      'background-clip': 'text',
-      '-webkit-text-fill-color': 'transparent'
-    })
-    var EM_STYLE = COPY(BASE_STYLE, {
-      'color': '#ff3502'
-    })
-    var styleMapping = {
-      h2: COPY(BASE_BLOCK_STYLE, {
-        'font-size': '140%',
-        'text-align': 'center',
-        'font-weight': 'normal',
-        'text-align': 'center',
-        'margin': '80px 10px 40px 10px'
-      }),
-      h3: COPY(BASE_BLOCK_STYLE, {
-        'font-weight': 'bold',
-        'font-size': '120%',
-        'margin': '40px 10px 20px 10px'
-      }),
-      p: COPY(BASE_BLOCK_STYLE, {
-        'margin': '10px 10px'
-      }),
-      blockquote: COPY(BASE_BLOCK_STYLE, {
-        'color': 'rgb(91, 91, 91)',
-        'padding': '1px 0 1px 10px',
-        'background': 'rgba(158, 158, 158, 0.1)',
-        'border-left': '3px solid rgb(158,158,158)',
-        'font-family': FONT_FAMILY_SERIF,
-      }),
-      code: COPY(BASE_BLOCK_STYLE, {
-        'font-size': '80%',
-        'overflow': 'auto',
-        'color': '#333',
-        'font-family': FONT_FAMILY_MONO,
-        'background': 'rgb(247, 247, 247)',
-        'border-radius': '2px',
-        'padding': '10px',
-        'line-height': '1.3',
-        'border': '1px solid rgb(236,236,236)',
-        'margin': '20px 0',
-      }),
-      image: COPY(BASE_BLOCK_STYLE, {
-        'border-radius': '4px',
-        'display': 'block',
-        'margin': '20px auto',
-        'width': '100%',
-      }),
-      image_org: COPY(BASE_BLOCK_STYLE, {
-        'border-radius': '4px',
-        'display': 'block',
-      }),
-      ol: COPY(BASE_BLOCK_STYLE, {
-        'margin-left': '0px',
-        'padding-left': '0px'
-      }),
-      ul: COPY(BASE_BLOCK_STYLE, {
-        'margin-left': '0px',
-        'padding-left': '0px',
-        'list-style': 'circle',
-      }),
-      listitem: COPY(BASE_STYLE, {
-        'text-indent': '-20px',
-        'margin': '10px 10px',
-      }),
-      codespan: COPY(BASE_STYLE, {
-        'font-size': '90%',
-        'font-family': FONT_FAMILY_MONO,
-        'color': '#ff3502',
-        'background': '#f8f5ec',
-        'padding': '3px 5px',
-        'border-radius': '2px',
-      }),
-      link: COPY(EM_STYLE, {}),
-      strong: COPY(EM_STYLE, {}),
-      table: COPY(BASE_BLOCK_STYLE, {
-        'border-collapse': 'collapse',  
-        'margin': '20px 0',
-      }),
-      thead: COPY(BASE_STYLE, {
-        'background': 'rgba(0,0,0,0.05)',      
-      }),
-      td: COPY(BASE_STYLE, {
-        'font-size': '80%',
-        'border': '1px solid #dfdfdf',
-        'padding': '4px 8px',
-      }),
-      footnotes: COPY(BASE_BLOCK_STYLE, {
-        'margin': '10px 10px',
-        'font-size': '14px'
-      }),
-      footnote: COPY(BASE_STYLE, {
-        'font-size': '12px',
-      })
-    }
-    var footnotes = []
-    var footnoteindex = 0
-    var S = function (tokenName) {
-      var arr = []
-      var dict = styleMapping[tokenName]
-      for (const key in dict) {
-        arr.push(key + ':' + dict[key])
-      }
-      return 'style="' + arr.join(';') + '"'
-    }
-    var addFootnote = function (title, link) {
-      footnoteindex += 1
-      footnotes.push([footnoteindex, title, link])
-      return footnoteindex
-    }
-    var buildFootnotes = function () {
-      var footnoteArray = footnotes.map(function (x) {
-        if (x[1] === x[2]) {
-          return '<code style="font-size: 90%; opacity: 0.6;">[' + x[0] + ']</code>: <i>'  + x[1] +'</i><br/>'
-        }
-        return '<code style="font-size: 90%; opacity: 0.6;">[' + x[0] + ']</code> ' + x[1] + ': <i>'  + x[2] +'</i><br/>'
-      })
-      return '<h3 ' + S('h3') + '>References</h3><p ' + S('footnotes') + '>'  + footnoteArray.join('\n') + '</p>'
-    }
-    // renderer
-    var renderer = new marked.Renderer()
-    renderer.heading = function (text, level) {
-      if (level < 3) {
-        return '<h2 ' + S('h2') + '>' + text + '</h2>'
-      } else {
-        return '<h3 ' + S('h3') + '>' + text + '</h3>'
-      }
-    }
-    renderer.paragraph = function (text) {
-      return '<p ' + S('p') + '>' + text + '</p>'
-    }
-    renderer.blockquote = function (text) {
-      return '<blockquote ' + S('blockquote') + '>' + text + '</blockquote>'
-    }
-    renderer.code = function (text, infostring) {
-      return '<pre ' + S('code') + '><code>' + text + '</code></pre>'
-    }
-    renderer.codespan = function (text, infostring) {
-      return '<code ' + S('codespan') + '>' + text + '</code>'
-    }
-    renderer.listitem = function (text) {
-      return '<p ' + S('listitem') + '><span style="margin-right: 10px">•</span>' + text + '</p>'
-    }
-    renderer.list = function (text, ordered, start) {
-      if (!ordered) {
-        return '<ul ' + S('ul') + '>' + text + '</ul>'
-      }
-      return '<ol ' + S('ol') + '>' + text + '</ol>'
-    }
-    renderer.image = function (href, title, text) {
-      return '<img ' + S(ENV_STETCH_IMAGE ? 'image' : 'image_org') + ' src="' + href + '" title="'+title+'" alt="'+text+'"/>'
-    }
-    renderer.link = function (href, title, text) {
-      if (ENV_USE_REFERENCES) {
-        var ref = addFootnote(title || text, href)
-        return '<span ' + S('link') + '>' + text + '<sup>['+ref+']</sup></span>'; 
-      } else {
-        return '<a href="' + href +'" title="' + title + '" ' + S('link') + '>' + text + '</a>'; 
-      }
-    }
-    renderer.strong = renderer.em = function (text) {
-      return '<strong ' + S('strong') + '>' + text + '</strong>'; 
-    }
-    renderer.table = function (header, body) {
-      return '<table ' + S('table') + '><thead ' + S('thead') + '>' + header + '</thead><tbody>' + body + '</tbody></table>'; 
-    }
-    renderer.tablecell = function (text, flags) {
-      return '<td ' + S('td') + '>' + text + '</td>'; 
-    }
-    var app = new Vue({
-      el: '#app',
-      data: function () {
-        return {
-          title: 'Markdown to WeChat Article',
-          paneStats: [true, false, false],
-          aboutSource: '### 优点\n\n'
-            + '- 能较好地排版\n'
-            + '- 能解决 `ul` 和 `ol` 元素样式渲染时被微信编辑器重置的问题\n'
-            + '- 能把链接自动转换为参考文献索引，并且附在文字末尾\n\n'
-            + '### 关于我\n\n'
-            + '我是 Lyric。如果你喜欢我的工具，可以：\n\n'
-            + '- 关注我的公众号 `imlyricw`\n'
-            + '  ![歌词经理的公众号](assets/images/qr.jpg)\n'
-            + '- 关注我的博客 https://lyric.im\n'
-            + '- 关注本工具的 Github https://github.com/lyricat/wechat-format\n'
-            + '\n\n',
-          aboutOutput: '',
-          output: '',
-          source: 
-              '## A Title 2\n\n### A title 3\n\na paragraphg\n\n- list item A AVeryLongMetho oooooooooooo ooooooooo  ooooooooo ooooooooooooood AVeryLongMe thoooo oooooo ooo ooooo ooooooo oooooooooooo  ooooooo od\n- list item 2\n\n'
-            + 'a text with [a link](https://google.com) and a **bold** text.\n\n'
-            + 'a picture.\n\n![](https://res.wx.qq.com/mpres/zh_CN/htmledition/pages/login/loginpage/images/bg_banner4273fb.png)\n\n'
-            + '```python\ndef foo():\n\tprint("ok")\n```\n\n'
-            + '```javascript\nfunction AVeryLongMethoooooooooooooooooooooooooooooooooooooooooooood() {\n\tconsole.log("ok")\n}\n```\n\n'
-            + 'a paragraphg with '
-            + 'inline code `{code: 0}`.\n\n'
-            + '> quote text\n> -- from Somebody\n\n'
-            + 'a huge paragraph: is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry\'s standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unc\n\n'
-            + 'another huge paragraph: is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry\'s standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unc\n\n'
-            + 'a table\n\n'
-            + '| Header 1 | Header 2 |\n'
-            + '| --- | --- |\n'
-            + '| Key 1 | Value 1 |\n'
-            + '| Key 2 | Value 2 |\n'
-            + '| Key 3 | Value 3 |\n\n'
-
-            + '## 中文标题2\n\n### 中文标题3\n\n段落\n\n- 列表项目 A\n- 列表项目 2\n\n'
-            + '文本和[链接](https://google.com)还有**加重字体**的测试。\n\n'
-            + '一个图片。\n\n![](https://res.wx.qq.com/mpres/zh_CN/htmledition/pages/login/loginpage/images/bg_banner4273fb.png)\n\n'
-            + '```python\ndef foo():\n\tprint("ok")\n```\n\n'
-            + '```javascript\nfunction AVeryLongMethoooooooooooooooooooooooooooooooooooooooooooood() {\n\tconsole.log("ok")\n}\n```\n\n'
-            + '段落和内嵌的 '
-            + '一段代码 `{code: 0}`.\n\n'
-            + '> 引用文字 text\n> -- 鲁迅说的\n\n'
-            + '一大段文字: 飞强机外少全般我体自，安记平育数太维军动调，省号该内维用报坑。 严几正儿较安增听连类八达，备因处门辰水兵述回。 断算表复风头历济，必条战影步写，后革A私车苏。 别许重现才二装叫矿它志，且六共能万后每所还维取做，最历建还扯群局克按扯。 只领养又义把整，便状基片利个，么刷方调动。\n\n'
-            + '又一大段文字: 飞强机外少全般我体自，安记平育数太维军动调，省号该内维用报坑。 严几正儿较安增听连类八达，备因处门辰水兵述回。 断算表复风头历济，必条战影步写，后革A私车苏。 别许重现才二装叫矿它志，且六共能万后每所还维取做，最历建还扯群局克按扯。 只领养又义把整，便状基片利个，么刷方调动。\n\n'
-        }
-      },
-      mounted () {
-      },
-      methods: {
-        renderWeChat: function (source) {
-          footnotes = []
-          footnoteindex = 0
-          var output = marked(source, { renderer: renderer })
-          if (footnotes.length) {
-            output += buildFootnotes()
-          }
-          return output
-        },
-        handleSelect: function (idx, path) {
-          this.paneStats = this.paneStats.map(function (x, xi) {
-            return xi === parseInt(idx)
-          })
-          if (idx === "1") {
-            ENV_USE_REFERENCES = true
-            ENV_STETCH_IMAGE = true
-            this.output = this.renderWeChat(editor.getValue())
-          }
-          if (idx === "2") {
-            ENV_USE_REFERENCES = false
-            ENV_STETCH_IMAGE = false
-            this.aboutOutput = this.renderWeChat(this.aboutSource)
-          }
-        },
-        copy: function () {
-          var clipboardDiv = document.getElementById('output')
-          clipboardDiv.focus();
-          window.getSelection().removeAllRanges();  
-          var range = document.createRange(); 
-          range.setStartBefore(clipboardDiv.firstChild);
-          range.setEndAfter(clipboardDiv.lastChild);
-          window.getSelection().addRange(range);  
-
-          try {
-            if (document.execCommand('copy')) {
-              this.$message({
-                message: '已复制到剪贴板', type: 'success'
-              })
-            } else {
-              this.$message({
-                message: '未能复制到剪贴板，请全选后右键复制', type: 'warning'
-              })
-            }
-          } catch (err) {
-            this.$message({
-              message: '未能复制到剪贴板，请全选后右键复制', type: 'warning'
-            })
-          }
-        }
-      }
-    })
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'UA-4178606-10');
   </script>
-  <script>
-    var editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
-      lineNumbers: false,
-      lineWrapping: true,
-      styleActiveLine: true,
-      theme: 'base16-light',
-      mode: 'text/x-markdown',
-    });
-  </script>  
 </body>
 </html>
